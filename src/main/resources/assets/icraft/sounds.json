@@ -1,0 +1,8 @@
+{
+  "ringPhone": {
+    "category": "ambient",
+    "sounds": [
+      "icraft:ringphone"
+    ]
+  }
+}
