@@ -28,7 +28,7 @@ import net.minecraftforge.fml.common.registry.EntityRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(modid = "icraft", name = "iCraft", version = "1.1", guiFactory = "iCraft.client.gui.GuiFactoryICraft", dependencies = "after:mcef", acceptedMinecraftVersions = "[1.12.2]")
+@Mod(modid = "icraft", name = "iCraft", version = "1.2", guiFactory = "iCraft.client.gui.GuiFactoryICraft", dependencies = "after:mcef", acceptedMinecraftVersions = "[1.12.2]")
 public class ICraft {
     public static Logger logger = LogManager.getLogger("iCraft");
     @SidedProxy(clientSide = "iCraft.client.ClientProxy", serverSide = "iCraft.core.CommonProxy")

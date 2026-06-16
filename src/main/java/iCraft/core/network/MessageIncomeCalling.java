@@ -4,15 +4,12 @@ import iCraft.core.ICraft;
 import iCraft.core.item.ItemiCraft;
 import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.NonNullList;
 import net.minecraft.world.World;
 
 public class MessageIncomeCalling extends MessageBase<MessageIncomeCalling> {
@@ -42,74 +39,118 @@ public class MessageIncomeCalling extends MessageBase<MessageIncomeCalling> {
       player.openGui(ICraft.instance, 6, player.world, 0, 0, 0);
    }
 
+   @Override
    public void handleServerSide(MessageIncomeCalling message, EntityPlayer player) {
       World world = player.world;
-      Iterator i = world.playerEntities.iterator();
 
-      label78:
-      while (i.hasNext()) {
-         EntityPlayer players = (EntityPlayer) i.next();
-         if (players != player) {
-            List<NonNullList<ItemStack>> itemStacks = Arrays.asList(players.inventory.mainInventory);
-            i = itemStacks.iterator();
+      for (EntityPlayer targetPlayer : world.playerEntities) {
 
-            while (true) {
-               ItemStack itemStack;
-               List blackList;
-               do {
-                  do {
-                     do {
-                        do {
-                           do {
-                              do {
-                                 do {
-                                    if (!i.hasNext()) {
-                                       continue label78;
-                                    }
+         if (targetPlayer == player) {
+            continue;
+         }
 
-                                    itemStack = (ItemStack) i.next();
-                                 } while (itemStack == null);
-                              } while (!(itemStack.getItem() instanceof ItemiCraft));
-                           } while (itemStack.getTagCompound() == null);
-                        } while (!itemStack.getTagCompound().hasKey("number"));
-                     } while (itemStack.getTagCompound().getInteger("number") != message.calledNumber);
+         for (ItemStack targetPhone : targetPlayer.inventory.mainInventory) {
 
-                     blackList = this.readNBT(itemStack.getTagCompound());
-                  } while (blackList.contains(player.getName()));
-               } while (itemStack.getTagCompound().hasKey("called") && itemStack.getTagCompound().getInteger("called") != 0);
+            if (targetPhone.isEmpty()) {
+               continue;
+            }
 
-               itemStack.getTagCompound().setInteger("called", 1);
-               itemStack.getTagCompound().setInteger("callingNumber", message.number);
-               itemStack.getTagCompound().setString("callingPlayer", player.getName());
-               itemStack.getTagCompound().setBoolean("isCalling", false);
-               List<NonNullList<ItemStack>> stacks = Arrays.asList(player.inventory.mainInventory);
-               i = stacks.iterator();
+            if (!(targetPhone.getItem() instanceof ItemiCraft)) {
+               continue;
+            }
 
-               while (i.hasNext()) {
-                  ItemStack stack = (ItemStack) i.next();
-                  if (stack != null && stack.getItem() instanceof ItemiCraft && stack.getTagCompound() != null && stack.getTagCompound().hasKey("number") && stack.getTagCompound().getInteger("number") == message.number) {
-                     stack.getTagCompound().setInteger("called", 1);
-                     stack.getTagCompound().setInteger("calledNumber", itemStack.getTagCompound().getInteger("number"));
-                     stack.getTagCompound().setString("calledPlayer", players.getName());
-                     stack.getTagCompound().setBoolean("isCalling", true);
-                     NetworkHandler.sendTo(this, (EntityPlayerMP) player);
-                     return;
-                  }
+            if (!targetPhone.hasTagCompound()) {
+               continue;
+            }
+
+            NBTTagCompound targetTag = targetPhone.getTagCompound();
+
+            if (!targetTag.hasKey("number")) {
+               continue;
+            }
+
+            if (targetTag.getInteger("number") != message.calledNumber) {
+               continue;
+            }
+
+            List<String> blackList = readNBT(targetTag);
+
+            if (blackList.contains(player.getName())) {
+               continue;
+            }
+
+            if (targetTag.hasKey("called")
+                    && targetTag.getInteger("called") != 0) {
+               continue;
+            }
+
+            targetTag.setInteger("called", 1);
+            targetTag.setInteger("callingNumber", message.number);
+            targetTag.setString("callingPlayer", player.getName());
+            targetTag.setBoolean("isCalling", false);
+
+            for (ItemStack callerPhone : player.inventory.mainInventory) {
+
+               if (callerPhone.isEmpty()) {
+                  continue;
                }
+
+               if (!(callerPhone.getItem() instanceof ItemiCraft)) {
+                  continue;
+               }
+
+               if (!callerPhone.hasTagCompound()) {
+                  continue;
+               }
+
+               NBTTagCompound callerTag = callerPhone.getTagCompound();
+
+               if (!callerTag.hasKey("number")) {
+                  continue;
+               }
+
+               if (callerTag.getInteger("number") != message.number) {
+                  continue;
+               }
+
+               callerTag.setInteger("called", 1);
+               callerTag.setInteger(
+                       "calledNumber",
+                       targetTag.getInteger("number")
+               );
+               callerTag.setString(
+                       "calledPlayer",
+                       targetPlayer.getName()
+               );
+               callerTag.setBoolean("isCalling", true);
+
+               NetworkHandler.sendTo(
+                       this,
+                       (EntityPlayerMP) player
+               );
+
+               return;
             }
          }
       }
-
    }
 
    private List<String> readNBT(NBTTagCompound nbtTags) {
-      NBTTagList tagList = nbtTags.getTagList("blacklist", 10);
-      List<String> blackList = new ArrayList();
+      List<String> blackList = new ArrayList<>();
 
-      for (int i = 0; i < tagList.tagCount(); ++i) {
-         NBTTagCompound tagCompound = tagList.getCompoundTagAt(i);
-         String str = tagCompound.getString("player" + i);
-         blackList.add(i, str);
+      NBTTagList tagList = nbtTags.getTagList("blacklist", 10);
+
+      for (int i = 0; i < tagList.tagCount(); i++) {
+
+         NBTTagCompound tagCompound =
+                 tagList.getCompoundTagAt(i);
+
+         String playerName =
+                 tagCompound.getString("player" + i);
+
+         if (!playerName.isEmpty()) {
+            blackList.add(playerName);
+         }
       }
 
       return blackList;
